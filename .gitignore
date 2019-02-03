@@ -1,0 +1,17 @@
+*.swp
+*.swo
+
+# Cache and coverage reports
+.coverage
+.coverage.*
+.cache
+
+# IntelliJ IDEA files
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# mr files
+mr
+config.yml
