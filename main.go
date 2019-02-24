@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,16 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
-
+	"github.com/yzzyx/mr/config"
 	"github.com/yzzyx/mr/imap"
-
 	"github.com/yzzyx/mr/notmuch"
+	"gopkg.in/yaml.v2"
 )
-
-func init() {
-	viper.SetDefault("maildir", os.Getenv("HOME")+"/.mail")
-}
 
 func indexAllFiles(db *notmuch.Database, lastRuntime time.Time, dirpath string) error {
 	fd, err := os.Open(dirpath)
@@ -85,6 +79,8 @@ func userHomeDir() string {
 func parsePathSetting(inPath string) string {
 	if strings.HasPrefix(inPath, "$HOME") {
 		inPath = userHomeDir() + inPath[5:]
+	} else if strings.HasPrefix(inPath, "~/") {
+		inPath = userHomeDir() + inPath[1:]
 	}
 
 	if strings.HasPrefix(inPath, "$") {
@@ -108,18 +104,24 @@ func main() {
 	var status notmuch.Status
 	configPath := filepath.Join(userHomeDir(), ".config", "mr")
 
-	viper.SetConfigName("config")
-	viper.AddConfigPath(configPath)
-	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
+	cfgdata, err := ioutil.ReadFile("./config.yml")
 	if err != nil {
-		panic(err)
+		fmt.Printf("Cannot read config file '%s': %s\n", configPath, err)
+		os.Exit(1)
 	}
 
-	// Create config folder if it doesnt exist already
-	_ = os.MkdirAll(configPath, 0700)
+	cfg := config.Config{}
+	err = yaml.Unmarshal(cfgdata, &cfg)
+	if err != nil {
+		fmt.Printf("Cannot parse config file '%s': %s\n", configPath, err)
+		os.Exit(1)
+	}
 
-	maildirPath := parsePathSetting(viper.GetString("maildir"))
+	if cfg.Maildir == "" {
+		cfg.Maildir = "~/.mail"
+	}
+
+	maildirPath := parsePathSetting(cfg.Maildir)
 
 	// Create maildir if it doesnt exist
 	err = os.MkdirAll(maildirPath, 0700)
@@ -143,18 +145,18 @@ func main() {
 		return
 	}
 
-	ts := time.Time{}
-	lastIndexedPath := filepath.Join(configPath, "lastindexed")
-	data, err := ioutil.ReadFile(lastIndexedPath)
-	if err == nil {
-		err = json.Unmarshal(data, &ts)
-		if err != nil {
-			fmt.Println("Cannot unmarshal last index date:", err)
-			return
-		}
-	}
+	//ts := time.Time{}
+	//lastIndexedPath := filepath.Join(configPath, "lastindexed")
+	//data, err := ioutil.ReadFile(lastIndexedPath)
+	//if err == nil {
+	//	err = json.Unmarshal(data, &ts)
+	//	if err != nil {
+	//		fmt.Println("Cannot unmarshal last index date:", err)
+	//		return
+	//	}
+	//}
 
-	now := time.Now()
+	//now := time.Now()
 
 	// FIXME - Wrap this in a command
 	// Reindex all files
@@ -165,14 +167,14 @@ func main() {
 	//	return
 	//}
 
-	data, err = json.Marshal(now)
-	if err == nil {
-		err = ioutil.WriteFile(lastIndexedPath, data, 0600)
-		if err != nil {
-			fmt.Println("Could not update last indexed timestamp:", err)
-			return
-		}
-	}
+	//data, err = json.Marshal(now)
+	//if err == nil {
+	//	err = ioutil.WriteFile(lastIndexedPath, data, 0600)
+	//	if err != nil {
+	//		fmt.Println("Could not update last indexed timestamp:", err)
+	//		return
+	//	}
+	//}
 
 	//if h.cfg.IndexedMailDir == false {
 	//	err = indexAllFiles(db, time.Time{}, h.maildirPath)
@@ -181,15 +183,24 @@ func main() {
 	//	}
 	//}
 
-	h, err := imap.New(db, maildirPath, configPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer h.Close()
+	// Create a IMAP setup for each mailbox
+	for name, mailbox := range cfg.Mailboxes {
+		folderPath := filepath.Join(maildirPath, name)
+		err = os.MkdirAll(folderPath, 0700)
+		if err != nil {
+			panic(err)
+		}
 
-	err = h.CheckMessages()
-	if err != nil {
-		log.Fatal(err)
+		h, err := imap.New(db, folderPath, mailbox)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer h.Close()
+
+		err = h.CheckMessages()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	return
 

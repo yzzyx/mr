@@ -15,20 +15,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
-
-	"github.com/yzzyx/mr/notmuch"
-
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
+	"github.com/yzzyx/mr/notmuch"
 )
 
-func init() {
-	viper.SetDefault("imap.server", "")
-	viper.SetDefault("imap.username", "")
-	viper.SetDefault("imap.password", "")
-	viper.SetDefault("imap.use_tls", true)
-	viper.SetDefault("imap.use_starttls", false)
+type Mailbox struct {
+	Server      string
+	Port        int
+	Username    string
+	Password    string
+	UseTLS      bool
+	UseStartTLS bool
+	Folders     struct {
+		Include []string
+		Exclude []string
+	}
 }
 
 type mailConfig struct {
@@ -45,7 +47,7 @@ type IndexUpdate struct {
 type IMAPHandler struct {
 	db          *notmuch.Database
 	maildirPath string
-	configPath  string
+	mailbox     Mailbox
 
 	cfg mailConfig
 
@@ -56,13 +58,18 @@ type IMAPHandler struct {
 }
 
 // New creates a new IMAPHandler
-func New(db *notmuch.Database, maildirPath string, configPath string) (*IMAPHandler, error) {
+func New(db *notmuch.Database,
+	maildirPath string,
+	mailbox Mailbox) (*IMAPHandler, error) {
+
 	var err error
 	h := IMAPHandler{}
 	h.hostname, err = os.Hostname()
 	if err != nil {
 		return nil, err
 	}
+
+	h.mailbox = mailbox
 
 	// Generate unique sequence numbers
 	seqNumChan := make(chan int)
@@ -77,11 +84,10 @@ func New(db *notmuch.Database, maildirPath string, configPath string) (*IMAPHand
 	h.processId = os.Getpid()
 	h.db = db
 	h.maildirPath = maildirPath
-	h.configPath = configPath
 
 	h.cfg.LastSeenUID = make(map[string]uint32)
 	// Get list of timestamps etc.
-	data, err := ioutil.ReadFile(filepath.Join(configPath, "imap-uids"))
+	data, err := ioutil.ReadFile(filepath.Join(maildirPath, ".imap-uids"))
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
@@ -102,7 +108,7 @@ func (h *IMAPHandler) Close() error {
 		return err
 	}
 
-	err = ioutil.WriteFile(filepath.Join(h.configPath, "imap-uids"), data, 0700)
+	err = ioutil.WriteFile(filepath.Join(h.maildirPath, ".imap-uids"), data, 0700)
 	if err != nil {
 		return err
 	}
@@ -206,14 +212,15 @@ func (h *IMAPHandler) getMessage(c *client.Client, mailbox string, uid uint32) e
 	// Add all messages to inbox
 	m.AddTag("inbox")
 
-	extraTags := viper.GetString("imap.mailboxes." + mailbox + ".default_tags")
-	for _, tag := range strings.Split(extraTags, ",") {
-		if strings.HasPrefix(tag, "-") {
-			m.RemoveTag(tag[1:])
-		} else {
-			m.AddTag(tag)
-		}
-	}
+	//// FIXME - how do we handle default tags?
+	//extraTags := cfg.Mailboxes[mailbox].tags
+	//for _, tag := range strings.Split(extraTags, ",") {
+	//	if strings.HasPrefix(tag, "-") {
+	//		m.RemoveTag(tag[1:])
+	//	} else {
+	//		m.AddTag(tag)
+	//	}
+	//}
 
 	tags := m.GetTags()
 	tagnames := []string{}
@@ -370,12 +377,24 @@ func (h *IMAPHandler) mailboxFetchMessages(c *client.Client, mailbox string) err
 	return nil
 }
 
-func (h *IMAPHandler) listMailboxes(c *client.Client) ([]string, error) {
-	// Make a map of excluded mailboxes
-	excludedList := viper.GetStringSlice("imap.excluded")
-	excludedMailboxes := make(map[string]bool)
-	for _, mb := range excludedList {
-		excludedMailboxes[mb] = true
+func (h *IMAPHandler) listFolders(c *client.Client) ([]string, error) {
+
+	includeAll := false
+	// If no specific folders are listed to be included, assume all folders should be included
+	if len(h.mailbox.Folders.Include) == 0 {
+		includeAll = true
+	}
+
+	// Make a map of included and excluded mailboxes
+	includedFolders := make(map[string]bool)
+	for _, folder := range h.mailbox.Folders.Include {
+		// Note - we set this to false to keep track of if it exists on the server or not
+		includedFolders[folder] = false
+	}
+
+	excludedFolders := make(map[string]bool)
+	for _, folder := range h.mailbox.Folders.Exclude {
+		excludedFolders[folder] = true
 	}
 
 	mboxChan := make(chan *imap.MailboxInfo, 10)
@@ -386,7 +405,7 @@ func (h *IMAPHandler) listMailboxes(c *client.Client) ([]string, error) {
 		}
 	}()
 
-	var mailboxNames []string
+	var folderNames []string
 	for mb := range mboxChan {
 		if mb == nil {
 			// We're done
@@ -394,11 +413,18 @@ func (h *IMAPHandler) listMailboxes(c *client.Client) ([]string, error) {
 		}
 
 		// Check if this mailbox should be excluded
-		if _, ok := excludedMailboxes[mb.Name]; ok {
+		if _, ok := excludedFolders[mb.Name]; ok {
 			continue
 		}
 
-		mailboxNames = append(mailboxNames, mb.Name)
+		if !includeAll {
+			if _, ok := includedFolders[mb.Name]; !ok {
+				continue
+			}
+			includedFolders[mb.Name] = true
+		}
+
+		folderNames = append(folderNames, mb.Name)
 	}
 
 	// Check if an error occurred while fetching data
@@ -408,7 +434,14 @@ func (h *IMAPHandler) listMailboxes(c *client.Client) ([]string, error) {
 	default:
 	}
 
-	return mailboxNames, nil
+	// Check if any of the specified folders were missing on the server
+	for folder, seen := range includedFolders {
+		if !seen {
+			return nil, fmt.Errorf("folder %s not found on server", folder)
+		}
+	}
+
+	return folderNames, nil
 }
 
 // CheckMessages checks for new/unindexed messages on the server
@@ -416,24 +449,27 @@ func (h *IMAPHandler) CheckMessages() error {
 	var c *client.Client
 	var err error
 
-	serverAddr := viper.GetString("imap.server")
-	portNum := viper.GetInt("imap.port")
-	username := viper.GetString("imap.username")
-	password := viper.GetString("imap.password")
-
-	if serverAddr == "" {
+	if h.mailbox.Server == "" {
 		return errors.New("imap server address not configured")
 	}
-	if username == "" {
+	if h.mailbox.Username == "" {
 		return errors.New("imap username not configured")
 	}
-	if password == "" {
+	if h.mailbox.Password == "" {
 		return errors.New("imap password not configured")
 	}
 
-	connectionString := fmt.Sprintf("%s:%d", serverAddr, portNum)
-	if viper.GetBool("imap.use_tls") {
-		tlsConfig := &tls.Config{ServerName: serverAddr}
+	// Set default port
+	if h.mailbox.Port == 0 {
+		h.mailbox.Port = 143
+		if h.mailbox.UseTLS {
+			h.mailbox.Port = 993
+		}
+	}
+
+	connectionString := fmt.Sprintf("%s:%d", h.mailbox.Server, h.mailbox.Port)
+	tlsConfig := &tls.Config{ServerName: h.mailbox.Server}
+	if h.mailbox.UseTLS {
 		c, err = client.DialTLS(connectionString, tlsConfig)
 	} else {
 		c, err = client.Dial(connectionString)
@@ -442,19 +478,18 @@ func (h *IMAPHandler) CheckMessages() error {
 	defer c.Logout()
 
 	// Start a TLS session
-	if viper.GetBool("imap.use_starttls") {
-		tlsConfig := &tls.Config{ServerName: serverAddr}
+	if h.mailbox.UseStartTLS {
 		if err := c.StartTLS(tlsConfig); err != nil {
 			return err
 		}
 	}
 
-	err = c.Login(username, password)
+	err = c.Login(h.mailbox.Username, h.mailbox.Password)
 	if err != nil {
 		return err
 	}
 
-	mailboxes, err := h.listMailboxes(c)
+	mailboxes, err := h.listFolders(c)
 	for _, mb := range mailboxes {
 		err = h.mailboxFetchMessages(c, mb)
 		if err != nil {
@@ -462,5 +497,4 @@ func (h *IMAPHandler) CheckMessages() error {
 		}
 	}
 	return nil
-
 }
