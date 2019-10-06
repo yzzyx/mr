@@ -36,16 +36,7 @@ func (v *ListView) GetLine(lineNumber int) (string, error) {
 
 	authorLen := 25
 
-	if lineNumber%2 == 0 {
-		line += fmt.Sprintf("\x1b[3%d;%dm", 7, 1)
-		// FIXME - 256 colors?
-		//line += fmt.Sprintf("\x1b[48;5;%dm\x1b[30m", 219)
-	}
 	line += fmt.Sprintf("%-[2]*.[2]*[1]s ", t.Authors, authorLen)
-	if lineNumber%2 == 0 {
-		line += "\x1b[0m"
-	}
-
 	if len(t.Messages) > 1 {
 		line += fmt.Sprintf("(%.3d) ", len(t.Messages))
 	} else {
