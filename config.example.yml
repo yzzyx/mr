@@ -1,0 +1,17 @@
+maildir: ~/.mail
+mailboxes:
+  someone@something.xyz:
+    server: imap.something.xyz
+    username: someone
+    password: my-secret-password
+    use_tls: true
+    user_starttls: false
+    folders:
+      # Either specify folders to be included, or folders to be excluded:
+      # Default is to include all folders
+      # include:
+      #  - INBOX
+      #  - INBOX.MyFolder
+      #  - INBOX.Something
+      # exclude:
+      #   - INBOX.Spam

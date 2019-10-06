@@ -14,7 +14,9 @@ import (
 
 	"github.com/yzzyx/mr/config"
 	"github.com/yzzyx/mr/imap"
+	"github.com/yzzyx/mr/models"
 	"github.com/yzzyx/mr/notmuch"
+	"github.com/yzzyx/mr/ui"
 	"gopkg.in/yaml.v2"
 )
 
@@ -182,7 +184,6 @@ func main() {
 	//		return nil, err
 	//	}
 	//}
-
 	// Create a IMAP setup for each mailbox
 	for name, mailbox := range cfg.Mailboxes {
 		folderPath := filepath.Join(maildirPath, name)
@@ -197,10 +198,22 @@ func main() {
 		}
 		defer h.Close()
 
-		err = h.CheckMessages()
-		if err != nil {
-			log.Fatal(err)
-		}
+		//err = h.CheckMessages()
+		//if err != nil {
+		//	log.Fatal(err)
+		//}
+	}
+
+	err = models.Setup(db)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "cannot setup models:", err)
+		return
+	}
+
+	err = ui.Setup()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error in ui:", err)
+		return
 	}
 	return
 
