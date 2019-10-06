@@ -27,7 +27,7 @@ func (ui *UI) handleKey(key interface{}, mod gocui.Modifier) func(g *gocui.Gui, 
 		// so we'll just defer that information to the underlying scroller
 
 		selectedLine := ui.currentView.GetSelectedLine()
-		return ui.currentView.contents.HandleKey(ui, key, mod, selectedLine)
+		return ui.currentView.HandleKey(ui, key, mod, selectedLine)
 	}
 }
 

@@ -17,6 +17,7 @@ type Scroller struct {
 	startLine    int
 	endLine      int
 	height       int
+	maxLines     int
 }
 
 // NewScroller creates a new Scroller with a specific content
@@ -51,9 +52,26 @@ func (v *Scroller) GetEndLine() int {
 	return v.endLine
 }
 
+func (v *Scroller) HandleKey(ui *UI, key interface{}, mod gocui.Modifier, lineNumber int) error {
+	err := v.contents.HandleKey(ui, key, mod, lineNumber)
+	if err != nil {
+		return err
+	}
+
+	// Check if we need to update start- or endline properties
+	return v.UpdateHeight(v.height)
+}
+
 // UpdateHeight recalculates start/end, and make sure that selected line is still visible
 func (v *Scroller) UpdateHeight(height int) error {
-	if height == v.height {
+	// Check if maxlines have changed
+	maxLines, err := v.contents.GetMaxLines()
+	if err != nil {
+		return err
+	}
+	maxLines-- // we need a 0-indexed number
+
+	if height == v.height && maxLines == v.maxLines {
 		return nil
 	}
 
@@ -66,17 +84,11 @@ func (v *Scroller) UpdateHeight(height int) error {
 		} else {
 			v.endLine = v.startLine + height
 		}
-	} else if height > v.height {
+	} else if height > v.height || maxLines > v.maxLines {
 		v.endLine = v.startLine + height
 	}
 	v.height = height
-
-	// Make sure we don't show too many lines
-	maxLines, err := v.contents.GetMaxLines()
-	if err != nil {
-		return err
-	}
-	maxLines-- // we need a 0-indexed number
+	v.maxLines = maxLines
 
 	if v.endLine > maxLines {
 		v.endLine = maxLines
