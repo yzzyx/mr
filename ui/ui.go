@@ -77,7 +77,11 @@ func (ui *UI) RenderList(g *gocui.Gui) error {
 		return err
 	}
 
-	v.Highlight = true
+	maxX -= 2
+
+	//v.Highlight = true
+	//v.SelBgColor = gocui.ColorGreen
+	//v.SelFgColor = gocui.ColorBlack
 	v.Frame = false
 	v.Wrap = false
 	v.SelBgColor = gocui.ColorGreen
@@ -106,7 +110,11 @@ func (ui *UI) RenderList(g *gocui.Gui) error {
 			return err
 		}
 
-		_, err = fmt.Fprintf(v, "%-[2]*[1]s\n", line, maxX)
+		marker := "  "
+		if i == selectedLine {
+			marker = ">>"
+		}
+		_, err = fmt.Fprintf(v, "%s%-[3]*.[3]*[2]s\n", marker, line, maxX)
 		if err != nil {
 			return err
 		}
