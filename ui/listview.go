@@ -29,9 +29,30 @@ func (v *ListView) GetLine(lineNumber int) (string, error) {
 	//if l.tagged {
 	//	line = "*"
 	//}
-	line += strings.Join(t.Tags, ",")
-	line += " " + t.Authors
-	line += " " + t.Subject
+	timeFormat := "2006-01-02 15:04"
+	timeStr := t.NewestDate.Format(timeFormat)
+	timeLen := len(timeFormat)
+	line = fmt.Sprintf("%-[2]*.[2]*[1]s ", timeStr, timeLen)
+
+	authorLen := 25
+
+	if lineNumber%2 == 0 {
+		line += fmt.Sprintf("\x1b[3%d;%dm", 7, 1)
+		// FIXME - 256 colors?
+		//line += fmt.Sprintf("\x1b[48;5;%dm\x1b[30m", 219)
+	}
+	line += fmt.Sprintf("%-[2]*.[2]*[1]s ", t.Authors, authorLen)
+	if lineNumber%2 == 0 {
+		line += "\x1b[0m"
+	}
+
+	if len(t.Messages) > 1 {
+		line += fmt.Sprintf("(%.3d) ", len(t.Messages))
+	} else {
+		line += "      "
+	}
+
+	line += strings.Join(t.Tags, ",") + " " + t.Subject
 	return line, nil
 }
 
@@ -87,7 +108,7 @@ func (v *ListView) editTags(ui *UI, lineNumber int) error {
 	thread := v.query.GetLine(lineNumber)
 	tags := strings.Join(thread.Tags, ",")
 	return v.editor(ui, tags, func(ok bool, newTags string) {
-		if !ok {
+		if !ok || newTags == tags {
 			return
 		}
 
@@ -100,6 +121,7 @@ func (v *ListView) editTags(ui *UI, lineNumber int) error {
 			}
 			thread.Tags = append(thread.Tags, nt)
 		}
+		thread.SaveTags()
 	})
 }
 
@@ -125,8 +147,7 @@ func (v *ListView) HandleKey(ui *UI, key interface{}, mod gocui.Modifier, lineNu
 			return nil
 		}
 
-		filename := thread.Messages[0]
-		content, err := NewMailView(filename)
+		content, err := NewThreadView(thread)
 		if err != nil {
 			return err
 		}

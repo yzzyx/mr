@@ -84,8 +84,6 @@ func (ui *UI) RenderList(g *gocui.Gui) error {
 	//v.SelFgColor = gocui.ColorBlack
 	v.Frame = false
 	v.Wrap = false
-	v.SelBgColor = gocui.ColorGreen
-	v.SelFgColor = gocui.ColorBlack
 
 	v.Clear()
 	_, viewHeight := v.Size()

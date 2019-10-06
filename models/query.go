@@ -1,5 +1,11 @@
 package models
 
+import (
+	"time"
+
+	"github.com/yzzyx/mr/notmuch"
+)
+
 // Query describes a query for a list of mailthreads
 type Query struct {
 	query string
@@ -61,11 +67,28 @@ func (m *Query) GetList(from, to int) []Thread {
 		}
 
 		messages := thread.GetMessages()
-		messageList := []string{}
+		messageList := make([]Message, 0, thread.GetTotalMessages())
 		for messages.Valid() {
 			m := messages.Get()
-			messageList = append(messageList, m.GetFileName())
+
+			message := Message{
+				ID:       m.GetMessageId(),
+				Filename: m.GetFileName(),
+			}
+
+			messageTimestamp, status := m.GetDate()
+			if status == notmuch.STATUS_SUCCESS {
+				message.Date = time.Unix(messageTimestamp, 0)
+			}
+
+			messageList = append(messageList, message)
+
 			messages.MoveToNext()
+		}
+
+		// Reverse list of messages
+		for left, right := 0, len(messageList)-1; left < right; left, right = left+1, right-1 {
+			messageList[left], messageList[right] = messageList[right], messageList[left]
 		}
 
 		t := Thread{

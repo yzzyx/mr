@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -15,18 +16,26 @@ type MailView struct {
 }
 
 func NewMailView(filename string) (*MailView, error) {
+	v := &MailView{}
+	v.lines = []string{}
+
 	f, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+		v.lines = []string{
+			fmt.Sprintf("Cannot open file %s:", filename),
+			err.Error(),
+		}
+		return v, nil
 	}
 
 	env, err := enmime.ReadEnvelope(f)
 	if err != nil {
-		return nil, err
+		v.lines = []string{
+			fmt.Sprintf("Cannot read mail from file %s:", filename),
+			err.Error(),
+		}
+		return v, nil
 	}
-
-	v := &MailView{}
-	v.lines = []string{}
 
 	for _, hdr := range []string{"Subject", "From", "To", "Cc", "Bcc", "Date"} {
 		line := env.GetHeader(hdr)
