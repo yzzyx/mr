@@ -208,7 +208,7 @@ func (ui *UI) editView(g *gocui.Gui, v *gocui.View) error {
 }
 
 func Setup() error {
-	g, err := gocui.NewGui(gocui.OutputNormal)
+	g, err := gocui.NewGui(gocui.Output256)
 	if err != nil {
 		return err
 	}
