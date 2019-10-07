@@ -25,8 +25,8 @@ type Mailbox struct {
 	Port        int
 	Username    string
 	Password    string
-	UseTLS      bool
-	UseStartTLS bool
+	UseTLS      bool `yaml:"use_tls"`
+	UseStartTLS bool `yaml:"use_starttls"`
 	Folders     struct {
 		Include []string
 		Exclude []string
