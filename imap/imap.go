@@ -31,6 +31,8 @@ type Mailbox struct {
 		Include []string
 		Exclude []string
 	}
+
+	FolderTags map[string]string `yaml:"folder_tags"`
 }
 
 type mailConfig struct {
@@ -212,15 +214,16 @@ func (h *IMAPHandler) getMessage(c *client.Client, mailbox string, uid uint32) e
 	// Add all messages to inbox
 	m.AddTag("inbox")
 
-	//// FIXME - how do we handle default tags?
-	//extraTags := cfg.Mailboxes[mailbox].tags
-	//for _, tag := range strings.Split(extraTags, ",") {
-	//	if strings.HasPrefix(tag, "-") {
-	//		m.RemoveTag(tag[1:])
-	//	} else {
-	//		m.AddTag(tag)
-	//	}
-	//}
+	// Add additional tags specified in config file
+	if extraTags, ok := h.mailbox.FolderTags[mailbox]; ok {
+		for _, tag := range strings.Split(extraTags, ",") {
+			if strings.HasPrefix(tag, "-") {
+				m.RemoveTag(tag[1:])
+			} else {
+				m.AddTag(tag)
+			}
+		}
+	}
 
 	tags := m.GetTags()
 	tagnames := []string{}
@@ -229,7 +232,7 @@ func (h *IMAPHandler) getMessage(c *client.Client, mailbox string, uid uint32) e
 		tags.MoveToNext()
 	}
 	if len(tagnames) > 0 {
-		fmt.Printf(" tags: %s\n", strings.Join(tagnames, ","))
+		fmt.Printf(" tagging %s: %s\n", tmpFilename, strings.Join(tagnames, ","))
 	}
 	m.Destroy()
 

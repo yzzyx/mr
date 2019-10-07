@@ -15,3 +15,8 @@ mailboxes:
       #  - INBOX.Something
       # exclude:
       #   - INBOX.Spam
+    folder_tags:
+      # map from IMAP folders to notmuch tags
+      # multiple tags are separated by ,
+      # to remove a tag, add a "-"-sign in front of the tag name
+      # "INBOX.Snowboard": "snowboard,-unread,-inbox"
