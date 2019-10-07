@@ -184,6 +184,7 @@ func main() {
 	//		return nil, err
 	//	}
 	//}
+
 	// Create a IMAP setup for each mailbox
 	for name, mailbox := range cfg.Mailboxes {
 		folderPath := filepath.Join(maildirPath, name)
@@ -198,10 +199,10 @@ func main() {
 		}
 		defer h.Close()
 
-		//err = h.CheckMessages()
-		//if err != nil {
-		//	log.Fatal(err)
-		//}
+		err = h.CheckMessages()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	err = models.Setup(db)
@@ -216,38 +217,4 @@ func main() {
 		return
 	}
 	return
-
-	q := db.CreateQuery("subject:sista")
-	msgs := q.SearchMessages()
-	for msgs.Valid() {
-		m := msgs.Get()
-		fmt.Println("matching: ", m.GetFileName())
-		m.Destroy()
-		msgs.MoveToNext()
-	}
-	msgs.Destroy()
-
-	threads := q.SearchThreads()
-	for threads.Valid() {
-		t := threads.Get()
-		fmt.Println("ThreadID:", t.GetThreadID())
-		fmt.Println(" Newest:", t.GetNewestDate())
-		fmt.Println(" Oldest:", t.GetOldestDate())
-		fmt.Println(" Subject:", t.GetSubject())
-		fmt.Println(" Author:", t.GetAuthors())
-
-		msgs := t.GetMessages()
-		for msgs.Valid() {
-			m := msgs.Get()
-			m.Destroy()
-			fmt.Println("  Message:", m.GetFileName())
-			msgs.MoveToNext()
-		}
-		msgs.Destroy()
-		t.Destroy()
-		threads.MoveToNext()
-	}
-	threads.Destroy()
-	q.Destroy()
-	fmt.Println(err)
 }
