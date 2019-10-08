@@ -477,6 +477,11 @@ func (h *IMAPHandler) CheckMessages() error {
 	} else {
 		c, err = client.Dial(connectionString)
 	}
+
+	if err != nil {
+		return err
+	}
+
 	// Don't forget to logout
 	defer c.Logout()
 
