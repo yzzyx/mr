@@ -44,3 +44,30 @@ func (t Thread) SaveTags() {
 		}
 	}
 }
+
+// HasTag returns true if thread has a specific tag set
+func (t *Thread) HasTag(tag string) bool {
+	for _, t := range t.Tags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}
+
+// FilterTags returns a filtered list of tags (hides unread, inbox)
+func (t *Thread) FilterTags() []string {
+	result := make([]string, 0, len(t.Tags))
+	excludeTags := map[string]struct{}{
+		"unread": struct{}{},
+		"inbox":  struct{}{},
+	}
+	for _, t := range t.Tags {
+		if _, skip := excludeTags[t]; skip {
+			continue
+		}
+		result = append(result, t)
+	}
+
+	return result
+}

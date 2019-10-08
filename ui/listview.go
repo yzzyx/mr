@@ -29,6 +29,7 @@ func (v *ListView) GetLine(lineNumber int) (string, error) {
 	//if l.tagged {
 	//	line = "*"
 	//}
+
 	timeFormat := "2006-01-02 15:04"
 	timeStr := t.NewestDate.Format(timeFormat)
 	timeLen := len(timeFormat)
@@ -37,13 +38,18 @@ func (v *ListView) GetLine(lineNumber int) (string, error) {
 	authorLen := 25
 
 	line += fmt.Sprintf("%-[2]*.[2]*[1]s ", t.Authors, authorLen)
+
+	if t.HasTag("unread") {
+		line = fmt.Sprintf("\x1b[38;5;%dm%s\x1b[0m ", 217, line)
+	}
+
 	if len(t.Messages) > 1 {
 		line += fmt.Sprintf("(%.3d) ", len(t.Messages))
 	} else {
 		line += "      "
 	}
 
-	line += strings.Join(t.Tags, ",") + " " + t.Subject
+	line += strings.Join(t.FilterTags(), ",") + " " + t.Subject
 	return line, nil
 }
 
