@@ -136,6 +136,21 @@ func (v *ListView) showSearch(ui *UI) error {
 	})
 }
 
+// newMail asks the user for a email adress to mail to, and then creates a new message
+func (v *ListView) newMail(ui *UI) error {
+	return v.editor(ui, "", func(ok bool, recipient string) {
+		if !ok {
+			return
+		}
+
+		newMail, err := NewMailView(MailSettings{To: recipient})
+		if err != nil {
+			return
+		}
+		ui.AddView(NewScroller(newMail))
+	})
+}
+
 func (v *ListView) HandleKey(ui *UI, key interface{}, mod gocui.Modifier, lineNumber int) error {
 	// Handle enter
 	if k, ok := key.(gocui.Key); ok && k == gocui.KeyEnter {
@@ -162,6 +177,8 @@ func (v *ListView) HandleKey(ui *UI, key interface{}, mod gocui.Modifier, lineNu
 			return v.editTags(ui, lineNumber)
 		case '/': // search for messages
 			return v.showSearch(ui)
+		case 'm': // new email
+			return v.newMail(ui)
 		}
 
 	}

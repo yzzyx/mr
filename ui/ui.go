@@ -121,6 +121,7 @@ func (ui *UI) RenderList(g *gocui.Gui) error {
 }
 
 func (ui *UI) Layout(g *gocui.Gui) error {
+
 	err := ui.RenderHeader(g)
 	if err != nil {
 		return err

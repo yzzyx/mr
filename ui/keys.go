@@ -56,6 +56,7 @@ func (ui *UI) KeyBindings(g *gocui.Gui) error {
 		{key: gocui.KeyEnter},
 		{key: 't'},
 		{key: '/'},
+		{key: 'm'},
 	}
 
 	for _, k := range keys {
