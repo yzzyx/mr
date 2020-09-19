@@ -6,12 +6,14 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
+// UI defines the base handler for the user interface
 type UI struct {
 	currentView *Scroller
 	views       []*Scroller
 	gui         *gocui.Gui
 }
 
+// RenderHeader writes the contents of the current header to screen
 func (ui *UI) RenderHeader(g *gocui.Gui) error {
 	maxX, _ := g.Size()
 	width := int(float32(maxX) / float32(len(ui.views)))
@@ -66,6 +68,7 @@ func (ui *UI) RenderHeader(g *gocui.Gui) error {
 	return nil
 }
 
+// RenderList writes the contents of a list implementation to screen
 func (ui *UI) RenderList(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
 	v, err := g.SetView("main", -1, 0, maxX, maxY+1)
@@ -120,6 +123,7 @@ func (ui *UI) RenderList(g *gocui.Gui) error {
 	return nil
 }
 
+// Layout is responsible for updating the complete contents of the screen
 func (ui *UI) Layout(g *gocui.Gui) error {
 	err := ui.RenderHeader(g)
 	if err != nil {
@@ -130,11 +134,13 @@ func (ui *UI) Layout(g *gocui.Gui) error {
 	return err
 }
 
+// AddView adds an additional view/tab to the ui
 func (ui *UI) AddView(v *Scroller) {
 	ui.views = append(ui.views, v)
 	ui.currentView = v
 }
 
+// NextView displays the next view from the list of available views
 func (ui *UI) NextView() {
 	var idx int
 	for idx = 0; idx < len(ui.views); idx++ {
@@ -150,6 +156,7 @@ func (ui *UI) NextView() {
 	ui.currentView = ui.views[idx]
 }
 
+// CloseView closes a specific view
 func (ui *UI) CloseView() error {
 	var idx int
 
@@ -207,6 +214,7 @@ func (ui *UI) editView(g *gocui.Gui, v *gocui.View) error {
 	return err
 }
 
+// Setup initializes the UI
 func Setup() error {
 	g, err := gocui.NewGui(gocui.Output256)
 	if err != nil {

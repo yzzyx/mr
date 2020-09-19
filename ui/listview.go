@@ -8,6 +8,7 @@ import (
 	"github.com/yzzyx/mr/models"
 )
 
+// ListView displays a list of entries, which are read from 'query'
 type ListView struct {
 	search     string
 	query      *models.Query
@@ -15,6 +16,7 @@ type ListView struct {
 	rangeEnd   int
 }
 
+// NewListView creates a new ListView with a specific query
 func NewListView(query string) (*ListView, error) {
 	view := &ListView{}
 	view.search = query
@@ -22,6 +24,7 @@ func NewListView(query string) (*ListView, error) {
 	return view, nil
 }
 
+// GetLine returns the contents of a specific line from a query
 func (v *ListView) GetLine(lineNumber int) (string, error) {
 	t := v.query.GetLine(lineNumber)
 
@@ -53,10 +56,12 @@ func (v *ListView) GetLine(lineNumber int) (string, error) {
 	return line, nil
 }
 
+// GetMaxLines returns the total number of lines in the ListView
 func (v *ListView) GetMaxLines() (int, error) {
 	return v.query.Count(), nil
 }
 
+// GetLabel returns the label of the ListView
 func (v *ListView) GetLabel() (string, error) {
 	if v.search != "" {
 		return "search: " + v.search, nil
@@ -136,6 +141,7 @@ func (v *ListView) showSearch(ui *UI) error {
 	})
 }
 
+// HandleKey updates the list view based on key input
 func (v *ListView) HandleKey(ui *UI, key interface{}, mod gocui.Modifier, lineNumber int) error {
 	// Handle enter
 	if k, ok := key.(gocui.Key); ok && k == gocui.KeyEnter {

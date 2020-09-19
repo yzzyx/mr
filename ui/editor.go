@@ -2,7 +2,7 @@ package ui
 
 import "github.com/jroimartin/gocui"
 
-// EditorOnCLose defines a callback used in editors
+// EditorOnClose defines a callback used in editors
 type EditorOnClose func(ok bool, s string)
 
 // SingleLineEditor implements the Editor interface, and
@@ -13,6 +13,7 @@ type SingleLineEditor struct {
 	OnClose EditorOnClose
 }
 
+// Edit updates the currently edited entry
 func (ed *SingleLineEditor) Edit(v *gocui.View, key gocui.Key, ch rune, mod gocui.Modifier) {
 	switch {
 	case ch != 0 && ch >= 0x20 && mod == 0:

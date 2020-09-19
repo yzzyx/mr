@@ -18,11 +18,13 @@ type threadMessageInfo struct {
 	lines     []string
 }
 
+// ThreadView displays a specific message thread
 type ThreadView struct {
 	messages []threadMessageInfo
 	thread   models.Thread
 }
 
+// NewThreadView creates a new view for displaying a specific thread
 func NewThreadView(thread models.Thread) (*ThreadView, error) {
 	v := &ThreadView{}
 	v.messages = make([]threadMessageInfo, 0, len(v.messages))
@@ -67,6 +69,7 @@ func NewThreadView(thread models.Thread) (*ThreadView, error) {
 	return v, nil
 }
 
+// GetLine returns the contents of a specific line in the thread view
 func (v *ThreadView) GetLine(lineNumber int) (string, error) {
 	count := 0
 	for _, m := range v.messages {
@@ -90,6 +93,7 @@ func (v *ThreadView) GetLine(lineNumber int) (string, error) {
 	return "linenumber not in any message", nil
 }
 
+// GetMaxLines returns the total number of lines in the thread view
 func (v *ThreadView) GetMaxLines() (int, error) {
 	count := 0
 	for _, m := range v.messages {
@@ -98,10 +102,12 @@ func (v *ThreadView) GetMaxLines() (int, error) {
 	return count, nil
 }
 
+// GetLabel returns the label of the thread view
 func (v *ThreadView) GetLabel() (string, error) {
 	return v.thread.Subject, nil
 }
 
+// HandleKey updates the thread view based on key input
 func (v *ThreadView) HandleKey(ui *UI, key interface{}, mod gocui.Modifier, lineNumber int) error {
 	// Handle enter
 	if k, ok := key.(gocui.Key); ok && k == gocui.KeyEnter {
@@ -119,17 +125,18 @@ func (v *ThreadView) HandleKey(ui *UI, key interface{}, mod gocui.Modifier, line
 	return nil
 }
 
+// ToggleExpanded sets a single message as expanded or closed
 func (m *threadMessageInfo) ToggleExpanded() {
 	m.expanded = !m.expanded
 
 	if !m.expanded {
 		m.lineCount = 1
 		return
-	} else {
-		m.lineCount = len(m.lines) + 1
 	}
+	m.lineCount = len(m.lines) + 1
 }
 
+// Label returns the label of a single thread message
 func (m threadMessageInfo) Label() string {
 	timeFormat := "2006-01-02 15:04"
 	timeStr := m.Date.Format(timeFormat)

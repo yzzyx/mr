@@ -20,6 +20,7 @@ import (
 	"github.com/yzzyx/mr/notmuch"
 )
 
+// Mailbox defines the available options for a IMAP mailbox to pull from
 type Mailbox struct {
 	Server      string
 	Port        int
@@ -40,13 +41,16 @@ type mailConfig struct {
 	LastSeenUID map[string]uint32
 }
 
+// IndexUpdate is used to signal that a message should be tagged with specific information
 type IndexUpdate struct {
 	Path      string   // Path to file to be updated
 	MessageID string   // MessageID to be updated
 	Tags      []string // Tags to add/remove from message (entries prefixed with "-" will be removed)
 }
 
-type IMAPHandler struct {
+// Handler is responsible for reading from mailboxes and updating the notmuch index
+// Note that a single handler can only read from one mailbox
+type Handler struct {
 	db          *notmuch.Database
 	maildirPath string
 	mailbox     Mailbox
@@ -55,17 +59,17 @@ type IMAPHandler struct {
 
 	// Used internally to generate maildir files
 	seqNumChan <-chan int
-	processId  int
+	processID  int
 	hostname   string
 }
 
-// New creates a new IMAPHandler
+// New creates a new Handler
 func New(db *notmuch.Database,
 	maildirPath string,
-	mailbox Mailbox) (*IMAPHandler, error) {
+	mailbox Mailbox) (*Handler, error) {
 
 	var err error
-	h := IMAPHandler{}
+	h := Handler{}
 	h.hostname, err = os.Hostname()
 	if err != nil {
 		return nil, err
@@ -83,7 +87,7 @@ func New(db *notmuch.Database,
 		}
 	}()
 	h.seqNumChan = seqNumChan
-	h.processId = os.Getpid()
+	h.processID = os.Getpid()
 	h.db = db
 	h.maildirPath = maildirPath
 
@@ -104,7 +108,7 @@ func New(db *notmuch.Database,
 }
 
 // Close closes all open handles, flushes channels and saves configuration data
-func (h *IMAPHandler) Close() error {
+func (h *Handler) Close() error {
 	data, err := json.Marshal(h.cfg)
 	if err != nil {
 		return err
@@ -119,7 +123,7 @@ func (h *IMAPHandler) Close() error {
 }
 
 // getMessage downloads a message from the server from a mailbox, and stores it in a maildir
-func (h *IMAPHandler) getMessage(c *client.Client, mailbox string, uid uint32) error {
+func (h *Handler) getMessage(c *client.Client, mailbox string, uid uint32) error {
 	// Select INBOX
 	_, err := c.Select(mailbox, false)
 	if err != nil {
@@ -152,7 +156,7 @@ func (h *IMAPHandler) getMessage(c *client.Client, mailbox string, uid uint32) e
 
 	md5hash := md5.New()
 
-	tmpFilename := fmt.Sprintf("%d_%d.%d.%s,U=%d", time.Now().Unix(), <-h.seqNumChan, h.processId, h.hostname, uid)
+	tmpFilename := fmt.Sprintf("%d_%d.%d.%s,U=%d", time.Now().Unix(), <-h.seqNumChan, h.processID, h.hostname, uid)
 	mailboxPath := filepath.Join(h.maildirPath, mailbox)
 	tmpPath := filepath.Join(mailboxPath, "tmp", tmpFilename)
 
@@ -281,19 +285,19 @@ func (h *IMAPHandler) getMessage(c *client.Client, mailbox string, uid uint32) e
 }
 
 // GetLastFetched returns the timestamp when we last checked this mailbox
-func (h *IMAPHandler) getLastSeenUID(mailbox string) uint32 {
+func (h *Handler) getLastSeenUID(mailbox string) uint32 {
 	if uid, ok := h.cfg.LastSeenUID[mailbox]; ok {
 		return uid
 	}
 	return 0
 }
 
-func (h *IMAPHandler) setLastSeenUID(mailbox string, uid uint32) {
+func (h *Handler) setLastSeenUID(mailbox string, uid uint32) {
 	h.cfg.LastSeenUID[mailbox] = uid
 }
 
 // seenMessage returns true if we've already seen this message
-func (h *IMAPHandler) seenMessage(messageID string) bool {
+func (h *Handler) seenMessage(messageID string) bool {
 	// Remove surrounding tags
 	if (strings.HasPrefix(messageID, "<") && strings.HasSuffix(messageID, ">")) ||
 		(strings.HasPrefix(messageID, "\"") && strings.HasSuffix(messageID, "\"")) {
@@ -310,7 +314,7 @@ func (h *IMAPHandler) seenMessage(messageID string) bool {
 	return false
 }
 
-func (h *IMAPHandler) mailboxFetchMessages(c *client.Client, mailbox string) error {
+func (h *Handler) mailboxFetchMessages(c *client.Client, mailbox string) error {
 	mbox, err := c.Select(mailbox, false)
 	if err != nil {
 		return err
@@ -380,7 +384,7 @@ func (h *IMAPHandler) mailboxFetchMessages(c *client.Client, mailbox string) err
 	return nil
 }
 
-func (h *IMAPHandler) listFolders(c *client.Client) ([]string, error) {
+func (h *Handler) listFolders(c *client.Client) ([]string, error) {
 
 	includeAll := false
 	// If no specific folders are listed to be included, assume all folders should be included
@@ -448,7 +452,7 @@ func (h *IMAPHandler) listFolders(c *client.Client) ([]string, error) {
 }
 
 // CheckMessages checks for new/unindexed messages on the server
-func (h *IMAPHandler) CheckMessages() error {
+func (h *Handler) CheckMessages() error {
 	var c *client.Client
 	var err error
 

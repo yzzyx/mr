@@ -10,11 +10,13 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
+// MailView displays an email message
 type MailView struct {
 	lines    []string
 	envelope *enmime.Envelope
 }
 
+// NewMailView creates a new MailView, with the contents from 'filename'
 func NewMailView(filename string) (*MailView, error) {
 	v := &MailView{}
 	v.lines = []string{}
@@ -58,18 +60,22 @@ func NewMailView(filename string) (*MailView, error) {
 	return v, nil
 }
 
+// GetLine returns the contents of a specific line in the mailview
 func (v *MailView) GetLine(lineNumber int) (string, error) {
 	return v.lines[lineNumber], nil
 }
 
+// GetMaxLines returns the number of lines in the message
 func (v *MailView) GetMaxLines() (int, error) {
 	return len(v.lines), nil
 }
 
+// GetLabel returns the label for the mailview
 func (v *MailView) GetLabel() (string, error) {
 	return v.envelope.GetHeader("Subject"), nil
 }
 
+// HandleKey updates the mailview based on key input
 func (v *MailView) HandleKey(ui *UI, key interface{}, mod gocui.Modifier, lineNumber int) error {
 	// Ignore all keys
 	return nil

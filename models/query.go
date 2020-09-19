@@ -13,10 +13,12 @@ type Query struct {
 	count int
 }
 
+// NewQuery creates a new query
 func NewQuery(query string) *Query {
 	return &Query{query: query}
 }
 
+// Count returns the matching query count
 func (m *Query) Count() int {
 	if m.count == 0 {
 		q := notmuchDB.CreateQuery(m.query)
@@ -27,6 +29,7 @@ func (m *Query) Count() int {
 	return m.count
 }
 
+// GetLine returns the contents of a specific line
 func (m *Query) GetLine(lineNumber int) Thread {
 	if lineNumber >= len(m.rows) || m.rows == nil {
 		m.rows = append(m.rows, m.GetList(len(m.rows), lineNumber+50)...)
@@ -38,6 +41,7 @@ func (m *Query) GetLine(lineNumber int) Thread {
 	return m.rows[lineNumber]
 }
 
+// GetList returns the threads available between 'from' and 'to'
 func (m *Query) GetList(from, to int) []Thread {
 	q := notmuchDB.CreateQuery(m.query)
 	defer q.Destroy()

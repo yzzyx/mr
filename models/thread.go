@@ -17,6 +17,7 @@ type Thread struct {
 	Messages   []Message
 }
 
+// SaveTags synchronizes the tags for a thread to disk
 func (t Thread) SaveTags() {
 	for _, msg := range t.Messages {
 		m, status := notmuchDB.FindMessage(msg.ID)

@@ -35,6 +35,7 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
 
+// KeyBindings registers all bindings
 func (ui *UI) KeyBindings(g *gocui.Gui) error {
 	if err := g.SetKeybinding("main", gocui.KeyArrowDown, gocui.ModNone, ui.keyDown); err != nil {
 		return err

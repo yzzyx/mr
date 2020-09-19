@@ -52,6 +52,7 @@ func (v *Scroller) GetEndLine() int {
 	return v.endLine
 }
 
+// HandleKey updates the scroller based on key input
 func (v *Scroller) HandleKey(ui *UI, key interface{}, mod gocui.Modifier, lineNumber int) error {
 	err := v.contents.HandleKey(ui, key, mod, lineNumber)
 	if err != nil {
